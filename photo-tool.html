@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>证件照生成工具 - 取色换背景</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        .header p {
+            opacity: 0.9;
+        }
+        .main-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            padding: 30px;
+        }
+        .upload-section {
+            flex: 1;
+            min-width: 300px;
+        }
+        .preview-section {
+            flex: 1;
+            min-width: 300px;
+        }
+        .section-title {
+            font-size: 1.2rem;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9fa;
+            position: relative;
+            overflow: hidden;
+        }
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #e8e8ff;
+        }
+        .upload-area.has-image {
+            border-style: solid;
+            border-color: #667eea;
+        }
+        .upload-area img {
+            max-width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+            display: none;
+        }
+        .upload-area.has-image img {
+            display: block;
+            margin: 0 auto;
+        }
+        .upload-area.has-image .upload-hint {
+            display: none;
+        }
+        .upload-hint {
+            color: #666;
+        }
+        .upload-hint .icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        .upload-hint p {
+            margin-bottom: 5px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 30px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            text-align: center;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .btn-group .btn {
+            flex: 1;
+            min-width: 100px;
+        }
+        .btn-size {
+            background: #fff;
+            border: 2px solid #ddd;
+            color: #666;
+        }
+        .btn-size.active {
+            border-color: #667eea;
+            color: #667eea;
+            background: #f0f0ff;
+        }
+        .canvas-container {
+            border: 2px solid #eee;
+            border-radius: 15px;
+            overflow: hidden;
+            background: #f8f9fa;
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .canvas-container.active {
+            border-color: #667eea;
+        }
+        .canvas-container canvas {
+            max-width: 100%;
+            max-height: 400px;
+            cursor: crosshair;
+        }
+        .placeholder {
+            color: #999;
+            text-align: center;
+            padding: 40px;
+        }
+        .placeholder .icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+        .color-picker-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .color-picker-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1rem;
+        }
+        .pick-color-area {
+            position: relative;
+            margin-bottom: 15px;
+        }
+        .pick-color-area img {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 10px;
+            cursor: crosshair;
+            border: 2px solid #ddd;
+        }
+        .pick-color-hint {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+        .selected-color {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .selected-color .color-preview {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+        .selected-color .color-info {
+            flex: 1;
+        }
+        .selected-color .color-info p {
+            margin: 2px 0;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .selected-color .color-info .color-value {
+            font-family: monospace;
+            color: #333;
+        }
+        .tolerance-slider {
+            margin-bottom: 15px;
+        }
+        .tolerance-slider label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .tolerance-slider input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        .tolerance-slider input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+        .tolerance-value {
+            text-align: right;
+            font-size: 0.85rem;
+            color: #667eea;
+            font-weight: 600;
+        }
+        .color-options {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .color-option {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+        .color-option.active {
+            border-color: #667eea;
+            transform: scale(1.15);
+        }
+        .tips {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .tips h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+        .tips ul {
+            list-style: none;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .tips li {
+            padding: 5px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        .tips li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #667eea;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            flex-direction: column;
+            color: white;
+        }
+        .loading-overlay.active {
+            display: flex;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .download-section {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .color-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .color-input-wrapper input[type="color"] {
+            width: 50px;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .mode-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .mode-toggle .btn {
+            flex: 1;
+        }
+        .mode-toggle .btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .mode-toggle .btn:not(.active) {
+            background: #fff;
+            border: 2px solid #ddd;
+            color: #666;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .action-buttons .btn {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 证件照背景更换工具</h1>
+            <p>点击图片选取背景颜色，一键更换证件照背景</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="upload-section">
+                <h2 class="section-title">📁 上传照片</h2>
+                <div id="uploadArea" class="upload-area">
+                    <img id="previewImg" />
+                    <div class="upload-hint">
+                        <div class="icon">📤</div>
+                        <p>点击或拖拽上传照片</p>
+                        <p style="font-size: 0.85rem; color: #999;">支持 JPG、PNG 格式</p>
+                    </div>
+                </div>
+                <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                
+                <div class="color-picker-section" id="colorPickerSection" style="display: none;">
+                    <h3>🎯 取色设置</h3>
+                    
+                    <div class="pick-color-area">
+                        <img id="pickColorImg" />
+                        <div class="pick-color-hint">点击图片选取要替换的背景颜色</div>
+                    </div>
+                    
+                    <div class="selected-color" id="selectedColorDisplay">
+                        <div class="color-preview" id="selectedColorPreview" style="background: #ccc;"></div>
+                        <div class="color-info">
+                            <p>已选颜色：<span class="color-value" id="selectedColorValue">未选择</span></p>
+                            <p>RGB：<span class="color-value" id="selectedColorRGB">-</span></p>
+                        </div>
+                    </div>
+                    
+                    <div class="tolerance-slider">
+                        <label>
+                            容差范围（颜色相似度）
+                            <span class="tolerance-value" id="toleranceValue">20</span>
+                        </label>
+                        <input type="range" id="toleranceSlider" min="1" max="60" value="20">
+                    </div>
+                    
+                    <div class="action-buttons">
+                        <button class="btn btn-secondary" id="resetBtn">🔄 重置</button>
+                        <button class="btn btn-primary" id="applyBtn">✅ 应用替换</button>
+                    </div>
+                </div>
+                
+                <div class="tips">
+                    <h3>📌 使用提示</h3>
+                    <ul>
+                        <li>上传照片后，点击图片中背景颜色进行取色</li>
+                        <li>调整容差滑块控制替换范围</li>
+                        <li>选择新的背景颜色后点击应用替换</li>
+                        <li>支持标准证件照尺寸：1寸、2寸</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="preview-section">
+                <h2 class="section-title">🖼️ 效果预览</h2>
+                
+                <div class="color-picker-section">
+                    <h3>选择新背景颜色：</h3>
+                    <div class="color-options" id="colorOptions">
+                        <div class="color-option" style="background: #2175f3;" data-color="#2175f3" title="蓝色"></div>
+                        <div class="color-option" style="background: #e74c3c;" data-color="#e74c3c" title="红色"></div>
+                        <div class="color-option" style="background: #ffffff; border: 1px solid #ddd;" data-color="#ffffff" title="白色"></div>
+                        <div class="color-option" style="background: #27ae60;" data-color="#27ae60" title="绿色"></div>
+                        <div class="color-option" style="background: #9b59b6;" data-color="#9b59b6" title="紫色"></div>
+                    </div>
+                    <div class="color-input-wrapper" style="margin-top: 15px;">
+                        <label>自定义颜色：</label>
+                        <input type="color" id="customColorInput" value="#2175f3">
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-size active" data-size="1inch">1寸</button>
+                    <button class="btn btn-size" data-size="2inch">2寸</button>
+                </div>
+                
+                <div id="canvasContainer" class="canvas-container">
+                    <div id="placeholder" class="placeholder">
+                        <div class="icon">🖼️</div>
+                        <p>上传照片后显示预览</p>
+                    </div>
+                    <canvas id="previewCanvas"></canvas>
+                </div>
+                
+                <div class="download-section">
+                    <button class="btn btn-primary" id="downloadBtn" disabled>📥 下载证件照</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <span id="loadingText">处理中...</span>
+    </div>
+    
+    <script>
+        let currentImage = null;
+        let originalImageData = null;
+        let currentColor = '#2175f3';
+        let currentSize = '1inch';
+        let selectedBgColor = null;
+        let tolerance = 20;
+        
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const canvasContainer = document.getElementById('canvasContainer');
+        const placeholder = document.getElementById('placeholder');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const previewImg = document.getElementById('previewImg');
+        const ctx = previewCanvas.getContext('2d');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const colorPickerSection = document.getElementById('colorPickerSection');
+        const pickColorImg = document.getElementById('pickColorImg');
+        const selectedColorPreview = document.getElementById('selectedColorPreview');
+        const selectedColorValue = document.getElementById('selectedColorValue');
+        const selectedColorRGB = document.getElementById('selectedColorRGB');
+        const toleranceSlider = document.getElementById('toleranceSlider');
+        const toleranceValue = document.getElementById('toleranceValue');
+        const applyBtn = document.getElementById('applyBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const customColorInput = document.getElementById('customColorInput');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        document.querySelectorAll('.color-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelector('.color-option.active')?.classList.remove('active');
+                option.classList.add('active');
+                currentColor = option.dataset.color;
+            });
+        });
+
+        document.querySelectorAll('.btn-size').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelector('.btn-size.active').classList.remove('active');
+                btn.classList.add('active');
+                currentSize = btn.dataset.size;
+                if (originalImageData) {
+                    renderResult();
+                }
+            });
+        });
+
+        customColorInput.addEventListener('input', (e) => {
+            currentColor = e.target.value;
+            document.querySelectorAll('.color-option').forEach(o => o.classList.remove('active'));
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = `证件照_${currentSize === '1inch' ? '1寸' : '2寸'}_${Date.now()}.png`;
+            link.href = previewCanvas.toDataURL('image/png');
+            link.click();
+        });
+
+        toleranceSlider.addEventListener('input', (e) => {
+            tolerance = parseInt(e.target.value);
+            toleranceValue.textContent = tolerance;
+        });
+
+        pickColorImg.addEventListener('click', (e) => {
+            const rect = e.target.getBoundingClientRect();
+            const scaleX = pickColorImg.naturalWidth / rect.width;
+            const scaleY = pickColorImg.naturalHeight / rect.height;
+            const x = Math.floor((e.clientX - rect.left) * scaleX);
+            const y = Math.floor((e.clientY - rect.top) * scaleY);
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = pickColorImg.naturalWidth;
+            canvas.height = pickColorImg.naturalHeight;
+            const tempCtx = canvas.getContext('2d');
+            tempCtx.drawImage(pickColorImg, 0, 0);
+            
+            const sampleSize = 5;
+            let totalR = 0, totalG = 0, totalB = 0, count = 0;
+            
+            for (let dy = -sampleSize; dy <= sampleSize; dy++) {
+                for (let dx = -sampleSize; dx <= sampleSize; dx++) {
+                    const nx = Math.max(0, Math.min(canvas.width - 1, x + dx));
+                    const ny = Math.max(0, Math.min(canvas.height - 1, y + dy));
+                    const pixel = tempCtx.getImageData(nx, ny, 1, 1).data;
+                    totalR += pixel[0];
+                    totalG += pixel[1];
+                    totalB += pixel[2];
+                    count++;
+                }
+            }
+            
+            const r = Math.round(totalR / count);
+            const g = Math.round(totalG / count);
+            const b = Math.round(totalB / count);
+            
+            selectedBgColor = { r, g, b };
+            const hex = '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+            
+            selectedColorPreview.style.background = hex;
+            selectedColorValue.textContent = hex.toUpperCase();
+            selectedColorRGB.textContent = `RGB(${r}, ${g}, ${b})`;
+        });
+
+        applyBtn.addEventListener('click', () => {
+            if (selectedBgColor && originalImageData) {
+                replaceColor();
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            if (originalImageData) {
+                ctx.putImageData(originalImageData, 0, 0);
+                selectedBgColor = null;
+                selectedColorPreview.style.background = '#ccc';
+                selectedColorValue.textContent = '未选择';
+                selectedColorRGB.textContent = '-';
+                downloadBtn.disabled = true;
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('请上传图片文件');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    currentImage = img;
+                    previewImg.src = e.target.result;
+                    pickColorImg.src = e.target.result;
+                    uploadArea.classList.add('has-image');
+                    colorPickerSection.style.display = 'block';
+                    initializeCanvas();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function initializeCanvas() {
+            const width = currentImage.width;
+            const height = currentImage.height;
+            
+            previewCanvas.width = width;
+            previewCanvas.height = height;
+            ctx.drawImage(currentImage, 0, 0, width, height);
+            
+            originalImageData = ctx.getImageData(0, 0, width, height);
+            
+            placeholder.style.display = 'none';
+            canvasContainer.classList.add('active');
+            downloadBtn.disabled = true;
+        }
+
+        function rgbToLab(r, g, b) {
+            r = r / 255;
+            g = g / 255;
+            b = b / 255;
+            
+            r = r > 0.04045 ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
+            g = g > 0.04045 ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
+            b = b > 0.04045 ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
+            
+            let x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047;
+            let y = (r * 0.2126 + g * 0.7152 + b * 0.0722) / 1.00000;
+            let z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883;
+            
+            x = x > 0.008856 ? Math.pow(x, 1 / 3) : (7.787 * x) + 16 / 116;
+            y = y > 0.008856 ? Math.pow(y, 1 / 3) : (7.787 * y) + 16 / 116;
+            z = z > 0.008856 ? Math.pow(z, 1 / 3) : (7.787 * z) + 16 / 116;
+            
+            return {
+                L: 116 * y - 16,
+                a: 500 * (x - y),
+                b: 200 * (y - z)
+            };
+        }
+
+        function colorDistance(r1, g1, b1, r2, g2, b2) {
+            const lab1 = rgbToLab(r1, g1, b1);
+            const lab2 = rgbToLab(r2, g2, b2);
+            
+            return Math.sqrt(
+                Math.pow(lab1.L - lab2.L, 2) +
+                Math.pow(lab1.a - lab2.a, 2) +
+                Math.pow(lab1.b - lab2.b, 2)
+            );
+        }
+
+        function replaceColor() {
+            showLoading('正在替换背景颜色...');
+            
+            setTimeout(() => {
+                const width = previewCanvas.width;
+                const height = previewCanvas.height;
+                
+                ctx.putImageData(originalImageData, 0, 0);
+                const imageData = ctx.getImageData(0, 0, width, height);
+                const data = imageData.data;
+                
+                const targetRGB = hexToRgb(currentColor);
+                const threshold = tolerance * 0.5;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    
+                    const distance = colorDistance(r, g, b, selectedBgColor.r, selectedBgColor.g, selectedBgColor.b);
+                    
+                    if (distance < threshold) {
+                        if (distance < threshold * 0.6) {
+                            data[i] = targetRGB.r;
+                            data[i + 1] = targetRGB.g;
+                            data[i + 2] = targetRGB.b;
+                        } else {
+                            const blendRatio = 1 - (distance - threshold * 0.6) / (threshold * 0.4);
+                            data[i] = Math.round(data[i] * (1 - blendRatio) + targetRGB.r * blendRatio);
+                            data[i + 1] = Math.round(data[i + 1] * (1 - blendRatio) + targetRGB.g * blendRatio);
+                            data[i + 2] = Math.round(data[i + 2] * (1 - blendRatio) + targetRGB.b * blendRatio);
+                        }
+                    }
+                }
+                
+                ctx.putImageData(imageData, 0, 0);
+                
+                renderResult();
+                hideLoading();
+                downloadBtn.disabled = false;
+            }, 100);
+        }
+
+        function renderResult() {
+            const width = currentImage.width;
+            const height = currentImage.height;
+            
+            const sizeConfig = {
+                '1inch': { width: 295, height: 413 },
+                '2inch': { width: 413, height: 579 }
+            };
+            
+            const targetSize = sizeConfig[currentSize];
+            
+            previewCanvas.width = width;
+            previewCanvas.height = height;
+            
+            if (originalImageData && selectedBgColor) {
+                ctx.putImageData(originalImageData, 0, 0);
+                const imageData = ctx.getImageData(0, 0, width, height);
+                const data = imageData.data;
+                
+                const targetRGB = hexToRgb(currentColor);
+                const threshold = tolerance * 0.5;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    
+                    const distance = colorDistance(r, g, b, selectedBgColor.r, selectedBgColor.g, selectedBgColor.b);
+                    
+                    if (distance < threshold) {
+                        if (distance < threshold * 0.6) {
+                            data[i] = targetRGB.r;
+                            data[i + 1] = targetRGB.g;
+                            data[i + 2] = targetRGB.b;
+                        } else {
+                            const blendRatio = 1 - (distance - threshold * 0.6) / (threshold * 0.4);
+                            data[i] = Math.round(data[i] * (1 - blendRatio) + targetRGB.r * blendRatio);
+                            data[i + 1] = Math.round(data[i + 1] * (1 - blendRatio) + targetRGB.g * blendRatio);
+                            data[i + 2] = Math.round(data[i + 2] * (1 - blendRatio) + targetRGB.b * blendRatio);
+                        }
+                    }
+                }
+                
+                ctx.putImageData(imageData, 0, 0);
+            }
+            
+            const sourceData = ctx.getImageData(0, 0, width, height);
+            
+            const finalCanvas = document.createElement('canvas');
+            finalCanvas.width = targetSize.width;
+            finalCanvas.height = targetSize.height;
+            const finalCtx = finalCanvas.getContext('2d');
+            
+            finalCtx.fillStyle = currentColor;
+            finalCtx.fillRect(0, 0, targetSize.width, targetSize.height);
+            
+            const scale = Math.min(targetSize.width / width, targetSize.height / height);
+            const newWidth = Math.round(width * scale);
+            const newHeight = Math.round(height * scale);
+            const offsetX = Math.round((targetSize.width - newWidth) / 2);
+            const offsetY = Math.round((targetSize.height - newHeight) / 2);
+            
+            previewCanvas.width = targetSize.width;
+            previewCanvas.height = targetSize.height;
+            
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.putImageData(sourceData, 0, 0);
+            
+            ctx.drawImage(tempCanvas, offsetX, offsetY, newWidth, newHeight);
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : { r: 33, g: 117, b: 243 };
+        }
+
+        function showLoading(text) {
+            loadingText.textContent = text;
+            loadingOverlay.classList.add('active');
+        }
+
+        function hideLoading() {
+            loadingOverlay.classList.remove('active');
+        }
+
+        document.querySelector('.color-option:first-child').click();
+    </script>
+</body>
+</html>
